@@ -107,7 +107,17 @@ def _prefers_system_data_paths(install_root: Path) -> bool:
         content = config_path_file.read_text(encoding="utf-8", errors="ignore")
     except OSError:
         return True
-    return "use-system-read-write-data-paths=false" not in content.lower().replace(" ", "")
+
+    # Read the setting's value rather than looking for a fixed string: the key is
+    # 'use-system-read-write-data-directories', and matching anything shorter means
+    # never recognising a standalone install - which sends Factorio to the system
+    # mod folder, where a mod built for another version refuses to load.
+    for line in content.splitlines():
+        line = line.split("#", 1)[0].strip().replace(" ", "")
+        key, separator, value = line.partition("=")
+        if separator and key.lower() == "use-system-read-write-data-directories":
+            return value.strip().lower() != "false"
+    return True
 
 
 def _auto_detect_mod_directory(factorio_executable_path: Path) -> Path | None:

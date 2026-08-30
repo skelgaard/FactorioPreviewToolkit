@@ -99,7 +99,9 @@ def run_pyinstaller(version: str) -> None:
     print("Building with PyInstaller...")
     subprocess.run(
         [
-            "pyinstaller",
+            sys.executable,
+            "-m",
+            "PyInstaller",
             "--onedir",
             "--name",
             EXECUTABLE_NAME,
@@ -273,9 +275,15 @@ def main() -> None:
     Runs the complete build process: cleans, builds, copies runtime files and rclone, zips, and prints result.
     """
     parked_user_data = clean_old_builds()
-    version = get_version()
-    run_pyinstaller(version)
-    restore_user_data(parked_user_data)
+    try:
+        version = get_version()
+        run_pyinstaller(version)
+    finally:
+        # Always put the user's files back, even when the build fails. Without this
+        # a crashed build leaves them in a temp folder and the next build writes a
+        # fresh config over the top - which is how an FTP password gets lost to a
+        # missing PyInstaller.
+        restore_user_data(parked_user_data)
     copy_runtime_files()
     copy_rclone_binary_for_current_platform()
     print_result(version)
